@@ -1,17 +1,19 @@
 FROM bitnami/base-ubuntu:14.04-onbuild
 MAINTAINER Bitnami <containers@bitnami.com>
 
-ENV BITNAMI_APP_DIR=$BITNAMI_PREFIX/postgresql \
-    BITNAMI_APP_NAME=postgresql \
-    BITNAMI_APP_DAEMON=postgres \
+ENV BITNAMI_APP_NAME=postgresql \
     BITNAMI_APP_USER=postgres \
-    BITNAMI_APP_VERSION=9.4.5-2-r02
+    BITNAMI_APP_DAEMON=postgres \
+    BITNAMI_APP_VERSION=9.4.5-0 \
+    BITNAMI_APP_OPTIONS="--password bitnami" \
+    POSTGRESQL_PACKAGE_SHA256="71a44e9ea3599cacb078729c1e006f7b3b20a6c2316e6933fd0497b46665345a"
 
-ENV BITNAMI_APP_VOL_PREFIX=/bitnami/$BITNAMI_APP_NAME \
-    PATH=$BITNAMI_APP_DIR/bin:$PATH
+ENV BITNAMI_APP_DIR=$BITNAMI_PREFIX/postgresql \
+    BITNAMI_APP_VOL_PREFIX=/bitnami/$BITNAMI_APP_NAME
 
-RUN $BITNAMI_PREFIX/install.sh\
-    --postgres_password bitnami
+ENV PATH=$BITNAMI_APP_DIR/bin:$PATH
+
+RUN $BITNAMI_PREFIX/install.sh
 
 COPY rootfs/ /
 

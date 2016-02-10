@@ -6,29 +6,24 @@ set_pg_param() {
   local value=${2}
 
   if [[ -n ${value} ]]; then
-    local current=$(sed -n -e "s/^\(${key} = '\)\([^ ']*\)\(.*\)$/\2/p" $BITNAMI_APP_DIR/conf.defaults/postgresql.conf)
+    local current=$(sed -n -e "s/^\(${key} = '\)\([^ ']*\)\(.*\)$/\2/p" $BITNAMI_APP_DIR/conf/postgresql.conf)
     if [[ "${current}" != "${value}" ]]; then
       value="$(echo "${value}" | sed 's|[&]|\\&|g')"
-      sed -i "s|^[#]*[ ]*${key} = .*|${key} = '${value}'|" $BITNAMI_APP_DIR/conf.defaults/postgresql.conf
+      sed -i "s|^[#]*[ ]*${key} = .*|${key} = '${value}'|" $BITNAMI_APP_DIR/conf/postgresql.conf
     fi
   fi
 }
 
 set_hba_param() {
   local value=${1}
-  if ! grep -q "$(sed "s| | \\\+|g" <<< ${value})" $BITNAMI_APP_DIR/conf.defaults/pg_hba.conf; then
-    echo "${value}" >> $BITNAMI_APP_DIR/conf.defaults/pg_hba.conf
+  if ! grep -q "$(sed "s| | \\\+|g" <<< ${value})" $BITNAMI_APP_DIR/conf/pg_hba.conf; then
+    echo -e "\n${value}" >> $BITNAMI_APP_DIR/conf/pg_hba.conf
   fi
 }
 
 # set up default configs
-mkdir conf.defaults
-s6-setuidgid $BITNAMI_APP_USER $BITNAMI_APP_DIR/bin/initdb -D $BITNAMI_APP_DIR/data \
-  -U $BITNAMI_APP_USER -E unicode -A trust >/dev/null
-mv $BITNAMI_APP_DIR/data/postgresql.conf conf.defaults/
-mv $BITNAMI_APP_DIR/data/pg_hba.conf conf.defaults/
-mv $BITNAMI_APP_DIR/data/pg_ident.conf conf.defaults/
-rm -rf $BITNAMI_APP_DIR/data
+mv $BITNAMI_APP_DIR/data/pg_hba.conf $BITNAMI_APP_DIR/conf/
+mv $BITNAMI_APP_DIR/data/pg_ident.conf $BITNAMI_APP_DIR/conf/
 
 # default
 set_pg_param "listen_addresses" "*"
@@ -45,6 +40,11 @@ set_pg_param "hot_standby" "on"
 
 set_hba_param "host all all 0.0.0.0/0 md5"
 set_hba_param "host replication all 0.0.0.0/0 md5"
+
+mv $BITNAMI_APP_DIR/conf $BITNAMI_APP_DIR/conf.defaults
+
+# remove existing default data
+rm -rf $BITNAMI_APP_DIR/data
 
 # symlink mount points at root to install dir
 ln -s $BITNAMI_APP_DIR/data $BITNAMI_APP_VOL_PREFIX/data
