@@ -1,4 +1,4 @@
-FROM gcr.io/stacksmith-images/ubuntu:14.04
+FROM gcr.io/stacksmith-images/ubuntu:14.04-r05
 MAINTAINER Bitnami <containers@bitnami.com>
 
 ENV BITNAMI_APP_NAME=postgresql \
@@ -25,5 +25,5 @@ EXPOSE 5432
 
 VOLUME ["$BITNAMI_APP_VOL_PREFIX/data"]
 
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["/app-entrypoint.sh"]
 CMD ["harpoon", "start", "--foreground", "postgresql"]
