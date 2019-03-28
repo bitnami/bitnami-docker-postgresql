@@ -1,19 +1,22 @@
-FROM bitnami/oraclelinux-extras:7-r302
+FROM bitnami/minideb-extras:stretch-r326
 LABEL maintainer "Bitnami <containers@bitnami.com>"
 
 ENV BITNAMI_PKG_CHMOD="-R g+rwX" \
     HOME="/"
 
 # Install required system packages and dependencies
-RUN install_packages glibc keyutils-libs krb5-libs libcom_err libedit libselinux libxml2 libxslt ncurses-libs nss-softokn-freebl openssl-libs pcre xz-libs zlib
-RUN bitnami-pkg unpack postgresql-10.7.0-0 --checksum 4c78ad0433f2f84e91e10ac9378d59ba98afd53d4625f928b8ec80546d021c60
+RUN install_packages libbsd0 libc6 libedit2 libgcc1 libicu57 liblzma5 libncurses5 libnss-wrapper libssl1.1 libstdc++6 libtinfo5 libxml2 libxslt1.1 zlib1g
+RUN bitnami-pkg unpack postgresql-11.2.0-0 --checksum 9e1a4e02db6b41240d735830b263a1d7190aa55bcf82e664069dc28b4d8ae035
+RUN echo 'en_GB.UTF-8 UTF-8' >> /etc/locale.gen && locale-gen
+RUN echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen && locale-gen
 RUN mkdir /docker-entrypoint-initdb.d /opt/bitnami/postgresql/conf/
 RUN chmod -R g+rwX /opt/bitnami/postgresql/conf/
 
 COPY rootfs /
-RUN rpm -Uvh --nodeps $(repoquery --location nss_wrapper)
 ENV BITNAMI_APP_NAME="postgresql" \
-    BITNAMI_IMAGE_VERSION="10.7.0-ol-7-r43" \
+    BITNAMI_IMAGE_VERSION="11.2.0-debian-9-r43" \
+    LANG="en_US.UTF-8" \
+    LANGUAGE="en_US:en" \
     NAMI_PREFIX="/.nami" \
     PATH="/opt/bitnami/postgresql/bin:$PATH" \
     POSTGRESQL_CLUSTER_APP_NAME="walreceiver" \

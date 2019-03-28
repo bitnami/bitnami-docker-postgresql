@@ -1,5 +1,3 @@
-[![CircleCI](https://circleci.com/gh/bitnami/bitnami-docker-postgresql/tree/master.svg?style=shield)](https://circleci.com/gh/bitnami/bitnami-docker-postgresql/tree/master)
-
 # What is PostgreSQL?
 
 > [PostgreSQL](http://www.postgresql.org) is an object-relational database management system (ORDBMS) with an emphasis on extensibility and on standards-compliance [[source]](https://en.wikipedia.org/wiki/PostgreSQL).
@@ -22,8 +20,21 @@ $ docker-compose up -d
 * Bitnami closely tracks upstream source changes and promptly publishes new versions of this image using our automated systems.
 * With Bitnami images the latest bug fixes and features are available as soon as possible.
 * Bitnami containers, virtual machines and cloud images use the same components and configuration approach - making it easy to switch between formats based on your project needs.
-* Bitnami images are built on CircleCI and automatically pushed to the Docker Hub.
 * All our images are based on [minideb](https://github.com/bitnami/minideb) a minimalist Debian based container image which gives you a small base container image and the familiarity of a leading linux distribution.
+* Bitnami container images are released daily with the latest distribution packages available.
+
+
+> This [CVE scan report](https://quay.io/repository/bitnami/postgresql?tab=tags) contains a security report with all open CVEs. To get the list of actionable security issues, find the "latest" tag, click the vulnerability report link under the corresponding "Security scan" field and then select the "Only show fixable" filter on the next page.
+
+# How to deploy PostgreSQL in Kubernetes?
+
+Deploying Bitnami applications as Helm Charts is the easiest way to get started with our applications on Kubernetes. Read more about the installation in the [Bitnami PostgreSQL Chart GitHub repository](https://github.com/bitnami/charts/tree/master/bitnami/postgresql).
+
+Bitnami containers can be used with [Kubeapps](https://kubeapps.com/) for deployment and management of Helm Charts in clusters.
+
+# Why use a non-root container?
+
+Non-root container images add an extra layer of security and are generally recommended for production environments. However, because they run as a non-root user, privileged tasks are typically off-limits. Learn more about non-root containers [in our docs](https://docs.bitnami.com/containers/how-to/work-with-non-root-containers/).
 
 # Supported tags and respective `Dockerfile` links
 
@@ -32,10 +43,12 @@ $ docker-compose up -d
 Learn more about the Bitnami tagging policy and the difference between rolling tags and immutable tags [in our documentation page](https://docs.bitnami.com/containers/how-to/understand-rolling-tags-containers/).
 
 
-* [`10-ol-7`, `10.5.0-ol-7-r4` (10/ol-7/Dockerfile)](https://github.com/bitnami/bitnami-docker-postgresql/blob/10.5.0-ol-7-r4/10/ol-7/Dockerfile)
-* [`10-debian-9`, `10.5.0-debian-9-r4`, `10`, `10.5.0`, `10.5.0-r4`, `latest` (10/Dockerfile)](https://github.com/bitnami/bitnami-docker-postgresql/blob/10.5.0-debian-9-r4/10/Dockerfile)
-* [`9.6-ol-7`, `9.6.10-ol-7-r3` (9.6/ol-7/Dockerfile)](https://github.com/bitnami/bitnami-docker-postgresql/blob/9.6.10-ol-7-r3/9.6/ol-7/Dockerfile)
-* [`9.6-debian-9`, `9.6.10-debian-9-r3`, `9.6`, `9.6.10`, `9.6.10-r3` (9.6/Dockerfile)](https://github.com/bitnami/bitnami-docker-postgresql/blob/9.6.10-debian-9-r3/9.6/Dockerfile)
+* [`11-ol-7`, `11.2.0-ol-7-r43` (11/ol-7/Dockerfile)](https://github.com/bitnami/bitnami-docker-postgresql/blob/11.2.0-ol-7-r43/11/ol-7/Dockerfile)
+* [`11-debian-9`, `11.2.0-debian-9-r43`, `11`, `11.2.0`, `11.2.0-r43` (11/debian-9/Dockerfile)](https://github.com/bitnami/bitnami-docker-postgresql/blob/11.2.0-debian-9-r43/11/debian-9/Dockerfile)
+* [`10-ol-7`, `10.7.0-ol-7-r43` (10/ol-7/Dockerfile)](https://github.com/bitnami/bitnami-docker-postgresql/blob/10.7.0-ol-7-r43/10/ol-7/Dockerfile)
+* [`10-debian-9`, `10.7.0-debian-9-r43`, `10`, `10.7.0`, `10.7.0-r43`, `latest` (10/debian-9/Dockerfile)](https://github.com/bitnami/bitnami-docker-postgresql/blob/10.7.0-debian-9-r43/10/debian-9/Dockerfile)
+* [`9.6-ol-7`, `9.6.12-ol-7-r43` (9.6/ol-7/Dockerfile)](https://github.com/bitnami/bitnami-docker-postgresql/blob/9.6.12-ol-7-r43/9.6/ol-7/Dockerfile)
+* [`9.6-debian-9`, `9.6.12-debian-9-r43`, `9.6`, `9.6.12`, `9.6.12-r43` (9.6/debian-9/Dockerfile)](https://github.com/bitnami/bitnami-docker-postgresql/blob/9.6.12-debian-9-r43/9.6/debian-9/Dockerfile)
 
 Subscribe to project updates by watching the [bitnami/postgresql GitHub repo](https://github.com/bitnami/bitnami-docker-postgresql).
 
@@ -165,7 +178,7 @@ In order to have your custom files inside the docker image you can mount them as
 
 ## Setting the root password on first run
 
-In the above commands you may have noticed the use of the `POSTGRESQL_PASSWORD` environment variable. Passing the `POSTGRESQL_PASSWORD` environment variable when running the image for the first time will set the password of the `postgres` user to the value of `POSTGRESQL_PASSWORD`.
+In the above commands you may have noticed the use of the `POSTGRESQL_PASSWORD` environment variable. Passing the `POSTGRESQL_PASSWORD` environment variable when running the image for the first time will set the password of the `postgres` user to the value of `POSTGRESQL_PASSWORD` (or the content of the file specified in `POSTGRESQL_PASSWORD_FILE`).
 
 ```bash
 $ docker run --name postgresql -e POSTGRESQL_PASSWORD=password123 bitnami/postgresql:latest
@@ -244,6 +257,7 @@ A [Streaming replication](http://www.postgresql.org/docs/9.4/static/warm-standby
  - `POSTGRESQL_REPLICATION_MODE`: Replication mode. Possible values `master`/`slave`. No defaults.
  - `POSTGRESQL_REPLICATION_USER`: The replication user created on the master on first run. No defaults.
  - `POSTGRESQL_REPLICATION_PASSWORD`: The replication users password. No defaults.
+ - `POSTGRESQL_REPLICATION_PASSWORD_FILE`: Path to a file that contains the replication users password. This will override the value specified in `POSTGRESQL_REPLICATION_PASSWORD`. No defaults.
  - `POSTGRESQL_MASTER_HOST`: Hostname/IP of replication master (slave parameter). No defaults.
  - `POSTGRESQL_MASTER_PORT_NUMBER`: Server port of the replication master (slave parameter). Defaults to `5432`.
 
@@ -333,16 +347,97 @@ services:
 Scale the number of slaves using:
 
 ```bash
-$ docker-compose scale postgresql-master=1 postgresql-slave=3
+$ docker-compose up --detach --scale postgresql-master=1 --scale postgresql-slave=3
 ```
 
 The above command scales up the number of slaves to `3`. You can scale down in the same way.
 
 > **Note**: You should not scale up/down the number of master nodes. Always have only one master node running.
 
+### Synchronous commits
+By default, the slaves instances are configued with asynchronous replication. In order to guarantee more data stability (at the cost of some performance), it is possible to set synchronous commits (i.e. a transaction commit will not return success to the client until it has been written in a set of replicas) using the following environment variables.
+
+  - `POSTGRESQL_SYNCHRONOUS_COMMIT_MODE`: Establishes the type of synchronous commit. The available options are: `on`, `remote_apply`, `remote_write`, `local` and `off`. The default value is `on`. For more information, check the [official PostgreSQL documentation](https://www.postgresql.org/docs/9.6/runtime-config-wal.html#GUC-SYNCHRONOUS-COMMIT).
+  - `POSTGRESQL_NUM_SYNCHRONOUS_REPLICAS`: Establishes the number of replicas that will enable synchronous replication. This number must not be above the number of slaves that you configure in the cluster.
+
+With Docker Compose the master-slave replication with synchronous commits can be setup as follows:
+
+```yaml
+version: '2'
+
+services:
+  postgresql-master:
+    image: 'bitnami/postgresql:latest'
+    ports:
+      - '5432'
+    volumes:
+      - 'postgresql_master_data:/bitnami'
+    environment:
+      - POSTGRESQL_REPLICATION_MODE=master
+      - POSTGRESQL_REPLICATION_USER=repl_user
+      - POSTGRESQL_REPLICATION_PASSWORD=repl_password
+      - POSTGRESQL_USERNAME=my_user
+      - POSTGRESQL_PASSWORD=my_password
+      - POSTGRESQL_DATABASE=my_database
+      - POSTGRESQL_SYNCHRONOUS_COMMIT_MODE=on
+      - POSTGRESQL_NUM_SYNCHRONOUS_REPLICAS=1
+    volumes:
+      - '/path/to/postgresql-persistence:/bitnami'
+  postgresql-slave:
+    image: 'bitnami/postgresql:latest'
+    ports:
+      - '5432'
+    depends_on:
+      - postgresql-master
+    environment:
+      - POSTGRESQL_REPLICATION_MODE=slave
+      - POSTGRESQL_REPLICATION_USER=repl_user
+      - POSTGRESQL_REPLICATION_PASSWORD=repl_password
+      - POSTGRESQL_MASTER_HOST=postgresql-master
+      - POSTGRESQL_MASTER_PORT_NUMBER=5432
+  postgresql-slave2:
+    image: 'bitnami/postgresql:latest'
+    ports:
+      - '5432'
+    depends_on:
+      - postgresql-master
+    environment:
+      - POSTGRESQL_REPLICATION_MODE=slave
+      - POSTGRESQL_REPLICATION_USER=repl_user
+      - POSTGRESQL_REPLICATION_PASSWORD=repl_password
+      - POSTGRESQL_MASTER_HOST=postgresql-master
+      - POSTGRESQL_MASTER_PORT_NUMBER=5432
+```
+
+In the example above, commits will need to be written to both the master and one of the slaves in order to be accepted. The other slave will continue using asynchronous replication. Check it with the following SQL query:
+
+```
+postgres=# select application_name as server, state,
+postgres-#       sync_priority as priority, sync_state
+postgres-#       from pg_stat_replication;
+   server    |   state   | priority | sync_state
+-------------|-----------|----------|------------
+ walreceiver | streaming |        0 | sync
+ walreceiver | streaming |        0 | async
+```
+
+> **Note:** For more advanced setups, you can define different replication groups with the `application_name` parameter, by setting the `POSTGRESQL_CLUSTER_APP_NAME` environment variable.
+
 ## Configuration file
 
-The image looks for configurations in `/opt/bitnami/postgresql/conf/`. You can mount a volume at `/opt/bitnami/postgresql/conf/` and copy/edit the configurations in the `/path/to/postgresql-persistence/conf/`. The default configurations will be populated to the `conf/` directory if it's empty.
+The image looks for `postgresql.conf` file in `/opt/bitnami/postgresql/conf/`. You can mount a volume at `/bitnami/postgresql/conf/` and copy/edit the `postgresql.conf` file in the `/path/to/postgresql-persistence/conf/`. The default configurations will be populated to the `conf/` directory if it's empty.
+
+```
+/path/to/postgresql-persistence/conf/
+└── postgresql.conf
+
+0 directories, 1 file
+```
+
+As PostgreSQL image is non-root, you need to set the proper permissions to the mounted directory in your host:
+```
+sudo chown 1001:1001 /path/to/postgresql-persistence/conf/
+```
 
 ### Step 1: Run the PostgreSQL image
 
@@ -350,7 +445,7 @@ Run the PostgreSQL image, mounting a directory from your host.
 
 ```bash
 $ docker run --name postgresql \
-    -v /path/to/postgresql-persistence/conf/:/opt/bitnami/postgresql/conf/ \
+    -v /path/to/postgresql-persistence/conf/:/bitnami/postgresql/conf/ \
     bitnami/postgresql:latest
 ```
 
@@ -365,7 +460,7 @@ services:
     ports:
       - '5432:5432'
     volumes:
-      - /path/to/postgresql-persistence/conf/:/opt/bitnami/postgresql/conf/
+      - /path/to/postgresql-persistence/conf/:/bitnami/postgresql/conf/
 ```
 
 ### Step 2: Edit the configuration
@@ -391,6 +486,93 @@ $ docker-compose restart postgresql
 ```
 
 Refer to the [server configuration](http://www.postgresql.org/docs/9.4/static/runtime-config.html) manual for the complete list of configuration options.
+
+### Allow settings to be loaded from files other than the default `postgresql.conf`
+
+Apart of using a custom `postgresql.conf`, you can include files ending in `.conf` from the `conf.d` directory in the volume at `/bitnami/postgresql/conf/`.
+For this purpose, the default `postgresql.conf` contains the following section:
+
+```
+#------------------------------------------------------------------------------
+# CONFIG FILE INCLUDES
+#------------------------------------------------------------------------------
+
+# These options allow settings to be loaded from files other than the
+# default postgresql.conf.
+
+include_dir = 'conf.d'  # Include files ending in '.conf' from directory 'conf.d'
+```
+
+In your host, you should create the extended configuration file under the `conf.d` directory:
+
+```bash
+mkdir -p /path/to/postgresql-persistence/conf/conf.d/
+vi /path/to/postgresql-persistence/conf/conf.d/extended.conf
+```
+
+If you are using your custom `postgresql.conf`, you should create (or uncomment) the above section in your config file, in this case the `/path/to/postgresql-persistence/conf/` structure should be something like
+
+```
+/path/to/postgresql-persistence/conf/
+├── conf.d
+│   └── extended.conf
+└── postgresql.conf
+
+1 directory, 2 files
+```
+
+## Specifyng initdb arguments
+
+Specifyng extra initdb arguments can easily be done using the following environment variables:
+
+ - `POSTGRESQL_INITDB_ARGS`: Specifies extra arguments for the initdb command. No defaults.
+ - `POSTGRESQL_INITDB_WALDIR`: Defines a custom location for the transaction log. No defaults.
+
+```bash
+$ docker run --name postgresql \
+  -e POSTGRESQL_INITDB_ARGS="--data-checksums" \
+  -e POSTGRESQL_INITDB_WALDIR="/bitnami/waldir" \
+  bitnami/postgresql:latest
+```
+
+or using Docker Compose:
+
+```yaml
+version: '2'
+
+services:
+  postgresql:
+    image: 'bitnami/postgresql:latest'
+    ports:
+      - '5432:5432'
+    environment:
+      - POSTGRESQL_INITDB_ARGS=--data-checksums
+      - POSTGRESQL_INITDB_WALDIR=/bitnami/waldir
+```
+
+## Environment variables aliases
+
+The Bitnami PostgreSQL container allows two different sets of environment variables. Please see the list of environment variable aliases in the next table:
+
+| Environment Variable                 | Alias                              |
+| :----------------------------------- | :--------------------------------- |
+| POSTGRESQL_USERNAME                  | POSTGRES_USER                      |
+| POSTGRESQL_DATABASE                  | POSTGRES_DB                        |
+| POSTGRESQL_PASSWORD                  | POSTGRES_PASSWORD                  |
+| POSTGRESQL_PASSWORD_FILE             | POSTGRES_PASSWORD_FILE             |
+| POSTGRESQL_PORT_NUMBER               | POSTGRES_PORT_NUMBER               |
+| POSTGRESQL_INITDB_ARGS               | POSTGRES_INITDB_ARGS               |
+| POSTGRESQL_INITDB_WALDIR             | POSTGRES_INITDB_WALDIR             |
+| POSTGRESQL_DATA_DIR                  | PGDATA                             |
+| POSTGRESQL_REPLICATION_USER          | POSTGRES_REPLICATION_USER          |
+| POSTGRESQL_REPLICATION_MODE          | POSTGRES_REPLICATION_MODE          |
+| POSTGRESQL_REPLICATION_PASSWORD      | POSTGRES_REPLICATION_PASSWORD      |
+| POSTGRESQL_REPLICATION_PASSWORD_FILE | POSTGRES_REPLICATION_PASSWORD_FILE |
+| POSTGRESQL_CLUSTER_APP_NAME          | POSTGRES_CLUSTER_APP_NAME          |
+| POSTGRESQL_MASTER_HOST               | POSTGRES_MASTER_HOST               |
+| POSTGRESQL_MASTER_PORT_NUMBER        | POSTGRES_MASTER_PORT_NUMBER        |
+| POSTGRESQL_NUM_SYNCHRONOUS_REPLICAS  | POSTGRES_NUM_SYNCHRONOUS_REPLICAS  |
+| POSTGRESQL_SYNCHRONOUS_COMMIT_MODE   | POSTGRES_SYNCHRONOUS_COMMIT_MODE   |
 
 # Logging
 
@@ -470,6 +652,14 @@ $ docker-compose up postgresql
 
 # Notable Changes
 
+## 9.6.11-r66, 9.6.11-ol-7-r83, 10.6.0-r68, 10.6.0-ol-7-r83, 11.1.0-r62 and 11.1.0-ol-7-r79
+
+- The PostgreSQL container can be configured using two sets of environment variables. For more information, check [Environment variables aliases](#environment-variables-aliases)
+
+## 9.6.11-r38, 10.6.0-r39 and 11.1.0-r34
+
+- The PostgreSQL container now contains options to easily configure synchronous commits between slaves. This provides more data stability, but must be configured with caution as it also has a cost in performance. For more information, check [Synchronous Commits](#synchronous-commits).
+
 ## 9.6.9-r19 and 10.4.0-r19
 
 - The PostgreSQL container has been migrated to a non-root user approach. Previously the container ran as the `root` user and the PostgreSQL daemon was started as the `postgres` user. From now on, both the container and the PostgreSQL daemon run as user `1001`. As a consequence, the data directory must be writable by that user. You can revert this behavior by changing `USER 1001` to `USER root` in the Dockerfile.
@@ -502,7 +692,7 @@ If you encountered a problem running this container, you can file an [issue](htt
 
 # License
 
-Copyright (c) 2015-2018 Bitnami
+Copyright (c) 2015-2019 Bitnami
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
