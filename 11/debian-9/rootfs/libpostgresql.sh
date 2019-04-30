@@ -71,10 +71,11 @@ EOF
   declare_env_alias POSTGRESQL_REPLICATION_PASSWORD_FILE POSTGRES_REPLICATION_PASSWORD_FILE
   declare_env_alias POSTGRESQL_INIT_MAX_TIMEOUT POSTGRES_INIT_MAX_TIMEOUT
 
-
     cat <<"EOF"
+# Paths
 export POSTGRESQL_VOLUMEDIR="/bitnami/postgresql"
-export POSTGRESQL_DATADIR="$POSTGRESQL_VOLUMEDIR/data"
+# POSTGRESQL_DATA_DIR used for backwards compatibility
+export POSTGRESQL_DATADIR="${POSTGRESQL_DATA_DIR:-$POSTGRESQL_VOLUMEDIR/data}"
 export POSTGRESQL_BASEDIR="/opt/bitnami/postgresql"
 export POSTGRESQL_CONFDIR="$POSTGRESQL_BASEDIR/conf"
 export POSTGRESQL_MOUNTED_CONFDIR="/bitnami/postgresql/conf"
@@ -86,19 +87,45 @@ export POSTGRESQL_LOGFILE="$POSTGRESQL_LOGDIR/postgresql.log"
 export POSTGRESQL_TMPDIR="$POSTGRESQL_BASEDIR/tmp"
 export POSTGRESQL_PIDFILE="$POSTGRESQL_TMPDIR/postgresql.pid"
 export POSTGRESQL_BINDIR="$POSTGRESQL_BASEDIR/bin"
+export POSTGRESQL_INITSCRIPTS_DIR=/docker-entrypoint-initdb.d
 export PATH="$POSTGRESQL_BINDIR:$PATH"
+
+# Users
 export POSTGRESQL_DAEMON_USER="postgresql"
 export POSTGRESQL_DAEMON_GROUP="postgresql"
+
+# Settings
 export POSTGRESQL_INIT_MAX_TIMEOUT=${POSTGRESQL_INIT_MAX_TIMEOUT:-60}
+export POSTGRESQL_CLUSTER_APP_NAME=${POSTGRESQL_CLUSTER_APP_NAME:-walreceiver}
+export POSTGRESQL_DATABASE="${POSTGRESQL_DATABASE:-}"
+export POSTGRESQL_INITDB_ARGS="${POSTGRESQL_INITDB_ARGS:-}"
+export ALLOW_EMPTY_PASSWORD="${ALLOW_EMPTY_PASSWORD:-yes}"
+export POSTGRESQL_INITDB_WALDIR="${POSTGRESQL_INITDB_WALDIR:-}"
+export POSTGRESQL_MASTER_HOST="${POSTGRESQL_MASTER_HOST:-}"
+export POSTGRESQL_MASTER_PORT_NUMBER="${POSTGRESQL_MASTER_PORT_NUMBER:-5432}"
+export POSTGRESQL_NUM_SYNCHRONOUS_REPLICAS="${POSTGRESQL_NUM_SYNCHRONOUS_REPLICAS:-0}"
+export POSTGRESQL_PORT_NUMBER="${POSTGRESQL_PORT_NUMBER:-5432}"
+export POSTGRESQL_REPLICATION_MODE="${POSTGRESQL_REPLICATION_MODE:-master}"
+export POSTGRESQL_REPLICATION_USER="${POSTGRESQL_REPLICATION_USER:-}"
+export POSTGRESQL_SYNCHRONOUS_COMMIT_MODE="${POSTGRESQL_SYNCHRONOUS_COMMIT_MODE:-on}"
+export POSTGRESQL_USERNAME="${POSTGRESQL_USERNAME:-postgres}"
 EOF
     if [[ -n "${POSTGRESQL_PASSWORD_FILE:-}" ]] && [[ -f "$POSTGRESQL_PASSWORD_FILE" ]]; then
         cat <<"EOF"
 export POSTGRESQL_PASSWORD="$(< "${POSTGRESQL_PASSWORD_FILE}")"
 EOF
+    else
+        cat <<"EOF"
+export POSTGRESQL_PASSWORD="${POSTGRESQL_PASSWORD:-}"
+EOF
     fi
     if [[ -n "${POSTGRESQL_REPLICATION_PASSWORD_FILE:-}" ]] && [[ -f "$POSTGRESQL_REPLICATION_PASSWORD_FILE" ]]; then
         cat <<"EOF"
 export POSTGRESQL_REPLICATION_PASSWORD="$(< "${POSTGRESQL_REPLICATION_PASSWORD_FILE}")"
+EOF
+    else
+        cat <<"EOF"
+export POSTGRESQL_REPLICATION_PASSWORD="${POSTGRESQL_REPLICATION_PASSWORD:-}"
 EOF
     fi
 }
@@ -476,10 +503,10 @@ postgresql_initialize() {
 #########################
 postgresql_custom_init_scripts() {
     info "Loading custom scripts..."   
-    if [[ -n $(find /docker-entrypoint-initdb.d/ -type f -regex ".*\.\(sh\|sql\|sql.gz\)") ]] && [[ ! -f "$POSTGRESQL_VOLUMEDIR/.user_scripts_initialized" ]] ; then
-        info "Loading user's custom files from /docker-entrypoint-initdb.d ...";
+    if [[ -n $(find $POSTGRESQL_INITSCRIPTS_DIR/ -type f -regex ".*\.\(sh\|sql\|sql.gz\)") ]] && [[ ! -f "$POSTGRESQL_VOLUMEDIR/.user_scripts_initialized" ]] ; then
+        info "Loading user's custom files from $POSTGRESQL_INITSCRIPTS_DIR ...";
         postgresql_start_bg
-        find /docker-entrypoint-initdb.d/ -type f -regex ".*\.\(sh\|sql\|sql.gz\)" | sort | while read -r f; do
+        find $POSTGRESQL_INITSCRIPTS_DIR/ -type f -regex ".*\.\(sh\|sql\|sql.gz\)" | sort | while read -r f; do
             case "$f" in
                 *.sh)
                     if [[ -x "$f" ]]; then
@@ -623,7 +650,7 @@ postgresql_master_init_db() {
 #   Boolean
 #########################
 postgresql_slave_init_db() {
-    info "Waiting for replication master to accept connections (60s timeout)..."
+    info "Waiting for replication master to accept connections (${POSTGRESQL_INIT_MAX_TIMEOUT} timeout)..."
     local -r check_args=("-U" "$POSTGRESQL_REPLICATION_USER" "-h" "$POSTGRESQL_MASTER_HOST" "-p" "$POSTGRESQL_MASTER_PORT_NUMBER" "-d" "postgres")
     local -r check_cmd=("$POSTGRESQL_BINDIR"/pg_isready)
     local ready_counter=$POSTGRESQL_INIT_MAX_TIMEOUT
