@@ -16,7 +16,7 @@ COPY rootfs /
 RUN /prepare.sh
 
 ENV BITNAMI_APP_NAME="postgresql" \
-    BITNAMI_IMAGE_VERSION="11.2.0-debian-9-r63" \
+    BITNAMI_IMAGE_VERSION="11.2.0-debian-9-r68" \
     LANG="en_US.UTF-8" \
     LANGUAGE="en_US:en" \
     PATH="/opt/bitnami/postgresql/bin:$PATH" \
