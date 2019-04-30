@@ -288,6 +288,7 @@ Next we start a replication slave container.
 $ docker run --name postgresql-slave \
   --link postgresql-master:master \
   -e POSTGRESQL_REPLICATION_MODE=slave \
+  -e POSTGRESQL_PASSWORD=password123 \
   -e POSTGRESQL_MASTER_HOST=master \
   -e POSTGRESQL_MASTER_PORT_NUMBER=5432 \
   -e POSTGRESQL_REPLICATION_USER=my_repl_user \
@@ -295,7 +296,7 @@ $ docker run --name postgresql-slave \
   bitnami/postgresql:latest
 ```
 
-In the above command the container is configured as a `slave` using the `POSTGRESQL_REPLICATION_MODE` parameter. Before the replication slave is started, the `POSTGRESQL_MASTER_HOST` and `POSTGRESQL_MASTER_PORT_NUMBER` parameters are used by the slave container to connect to the master and replicate the initial database from the master. The `POSTGRESQL_REPLICATION_USER` and `POSTGRESQL_REPLICATION_PASSWORD` credentials are used to authenticate with the master.
+In the above command the container is configured as a `slave` using the `POSTGRESQL_REPLICATION_MODE` parameter. Before the replication slave is started, the `POSTGRESQL_MASTER_HOST` and `POSTGRESQL_MASTER_PORT_NUMBER` parameters are used by the slave container to connect to the master and replicate the initial database from the master. The `POSTGRESQL_REPLICATION_USER` and `POSTGRESQL_REPLICATION_PASSWORD` credentials are used to authenticate with the master. In order to change the `pg_hba.conf` default settings, the slave needs to know if `POSTGRESQL_PASSWORD` is set.
 
 With these two commands you now have a two node PostgreSQL master-slave streaming replication cluster up and running. You can scale the cluster by adding/removing slaves without incurring any downtime.
 
@@ -338,6 +339,7 @@ services:
       - postgresql-master
     environment:
       - POSTGRESQL_REPLICATION_MODE=slave
+      - POSTGRESQL_PASSWORD=my_password
       - POSTGRESQL_REPLICATION_USER=repl_user
       - POSTGRESQL_REPLICATION_PASSWORD=repl_password
       - POSTGRESQL_MASTER_HOST=postgresql-master
@@ -651,6 +653,11 @@ $ docker-compose up postgresql
 ```
 
 # Notable Changes
+
+## PLACEHOLDER for POSTGRESQL versions
+- Decrease the size of the container. It is not necessary Node.js anymore. PostgreSQL configuration moved to bash scripts in the rootfs/ folder.
+- This container is backwards compatible with the previous versions, as the mount folders remain unchanged.
+- The `POSTGRESQL_PASSWORD` variable must be passed to the slaves so they generate the proper `pg_hba.conf` admission rules.
 
 ## 9.6.11-r66, 9.6.11-ol-7-r83, 10.6.0-r68, 10.6.0-ol-7-r83, 11.1.0-r62 and 11.1.0-ol-7-r79
 
