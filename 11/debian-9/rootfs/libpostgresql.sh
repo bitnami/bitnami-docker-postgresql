@@ -22,12 +22,13 @@
 #########################
 postgresql_enable_nss_wrapper() {
   if ! getent passwd "$(id -u)" &> /dev/null && [ -e "$NSS_WRAPPER_LIB" ]; then
+    debug "Configuring libnss_wrapper..."
     export LD_PRELOAD="$NSS_WRAPPER_LIB"
     # shellcheck disable=SC2155
     export NSS_WRAPPER_PASSWD="$(mktemp)"
     # shellcheck disable=SC2155
     export NSS_WRAPPER_GROUP="$(mktemp)"
-    echo "postgres:x:$(id -u):$(id -g):PostgreSQL:$POSTGRESQL_DATADIR:/bin/false" > "$NSS_WRAPPER_PASSWD"
+    echo "postgres:x:$(id -u):$(id -g):PostgreSQL:$POSTGRESQL_DATA_DIR:/bin/false" > "$NSS_WRAPPER_PASSWD"
     echo "postgres:x:$(id -g):" > "$NSS_WRAPPER_GROUP"
   fi
 }
@@ -43,52 +44,48 @@ postgresql_enable_nss_wrapper() {
 #########################
 postgresql_env() {
     declare_env_alias() {
-      if env | grep -q "$2"; then
+      local -r alias="${1:?missing environment variable alias}"
+      local -r original="${2:?missing original environment variable}"
+
+      if env | grep -q "${original}"; then
           cat << EOF 
-export $1="${!2}"
+export $alias="${!original}"
 EOF
       fi
     }
-  # Alias created for official postgre image compatibility
-  declare_env_alias POSTGRESQL_PASSWORD POSTGRES_PASSWORD
-  declare_env_alias POSTGRESQL_DATABASE POSTGRES_DB
-  declare_env_alias POSTGRESQL_USERNAME POSTGRES_USER
-  declare_env_alias POSTGRESQL_DATA_DIR PGDATA
-  declare_env_alias POSTGRESQL_INITDB_WALDIR POSTGRES_INITDB_WALDIR
-  declare_env_alias POSTGRESQL_INITDB_ARGS POSTGRES_INITDB_ARGS
+  
+    # Alias created for official PostgreSQL image compatibility
+    declare_env_alias POSTGRESQL_DATABASE POSTGRES_DB
+    declare_env_alias POSTGRESQL_USERNAME POSTGRES_USER
+    declare_env_alias POSTGRESQL_DATA_DIR PGDATA
 
-  # Alias created for maintain consistency using prefix
-  declare_env_alias POSTGRESQL_CLUSTER_APP_NAME POSTGRES_CLUSTER_APP_NAME
-  declare_env_alias POSTGRESQL_MASTER_HOST POSTGRES_MASTER_HOST
-  declare_env_alias POSTGRESQL_MASTER_PORT_NUMBER POSTGRES_MASTER_PORT_NUMBER
-  declare_env_alias POSTGRESQL_NUM_SYNCHRONOUS_REPLICAS POSTGRES_NUM_SYNCHRONOUS_REPLICAS
-  declare_env_alias POSTGRESQL_PORT_NUMBER POSTGRES_PORT_NUMBER
-  declare_env_alias POSTGRESQL_REPLICATION_MODE POSTGRES_REPLICATION_MODE
-  declare_env_alias POSTGRESQL_REPLICATION_PASSWORD POSTGRES_REPLICATION_PASSWORD
-  declare_env_alias POSTGRESQL_REPLICATION_USER POSTGRES_REPLICATION_USER
-  declare_env_alias POSTGRESQL_SYNCHRONOUS_COMMIT_MODE POSTGRES_SYNCHRONOUS_COMMIT_MODE
-  declare_env_alias POSTGRESQL_PASSWORD_FILE POSTGRES_PASSWORD_FILE
-  declare_env_alias POSTGRESQL_REPLICATION_PASSWORD_FILE POSTGRES_REPLICATION_PASSWORD_FILE
-  declare_env_alias POSTGRESQL_INIT_MAX_TIMEOUT POSTGRES_INIT_MAX_TIMEOUT
+    local -r suffixes=(
+      "PASSWORD" "INITDB_WAL_DIR" "INITDB_ARGS" "CLUSTER_APP_NAME" 
+      "MASTER_HOST" "MASTER_PORT_NUMBER" "NUM_SYNCHRONOUS_REPLICAS" 
+      "PORT_NUMBER" "REPLICATION_MODE" "REPLICATION_PASSWORD" "REPLICATION_USER"
+      "SYNCHRONOUS_COMMIT_MODE" "PASSWORD_FILE" "REPLICATION_PASSWORD_FILE" "INIT_MAX_TIMEOUT"
+    )
+    for s in "${suffixes[@]}"; do
+      declare_env_alias "POSTGRESQL_${s}" "POSTGRES_${s}"
+    done
 
     cat <<"EOF"
 # Paths
-export POSTGRESQL_VOLUMEDIR="/bitnami/postgresql"
-# POSTGRESQL_DATA_DIR used for backwards compatibility
-export POSTGRESQL_DATADIR="${POSTGRESQL_DATA_DIR:-$POSTGRESQL_VOLUMEDIR/data}"
-export POSTGRESQL_BASEDIR="/opt/bitnami/postgresql"
-export POSTGRESQL_CONFDIR="$POSTGRESQL_BASEDIR/conf"
-export POSTGRESQL_MOUNTED_CONFDIR="/bitnami/postgresql/conf"
-export POSTGRESQL_CONFFILE="$POSTGRESQL_CONFDIR/postgresql.conf"
-export POSTGRESQL_PGHBAFILE="$POSTGRESQL_CONFDIR/pg_hba.conf"
-export POSTGRESQL_RECOVERYFILE="$POSTGRESQL_DATADIR/recovery.conf"
-export POSTGRESQL_LOGDIR="$POSTGRESQL_BASEDIR/logs"
-export POSTGRESQL_LOGFILE="$POSTGRESQL_LOGDIR/postgresql.log"
-export POSTGRESQL_TMPDIR="$POSTGRESQL_BASEDIR/tmp"
-export POSTGRESQL_PIDFILE="$POSTGRESQL_TMPDIR/postgresql.pid"
-export POSTGRESQL_BINDIR="$POSTGRESQL_BASEDIR/bin"
+export POSTGRESQL_VOLUME_DIR="/bitnami/postgresql"
+export POSTGRESQL_DATA_DIR="${POSTGRESQL_DATA_DIR:-$POSTGRESQL_VOLUME_DIR/data}"
+export POSTGRESQL_BASE_DIR="/opt/bitnami/postgresql"
+export POSTGRESQL_CONF_DIR="$POSTGRESQL_BASE_DIR/conf"
+export POSTGRESQL_MOUNTED_CONF_DIR="/bitnami/postgresql/conf"
+export POSTGRESQL_CONF_FILE="$POSTGRESQL_CONF_DIR/postgresql.conf"
+export POSTGRESQL_PGHBA_FILE="$POSTGRESQL_CONF_DIR/pg_hba.conf"
+export POSTGRESQL_RECOVERY_FILE="$POSTGRESQL_DATA_DIR/recovery.conf"
+export POSTGRESQL_LOG_DIR="$POSTGRESQL_BASE_DIR/logs"
+export POSTGRESQL_LOG_FILE="$POSTGRESQL_LOG_DIR/postgresql.log"
+export POSTGRESQL_TMP_DIR="$POSTGRESQL_BASE_DIR/tmp"
+export POSTGRESQL_PID_FILE="$POSTGRESQL_TMP_DIR/postgresql.pid"
+export POSTGRESQL_BIN_DIR="$POSTGRESQL_BASE_DIR/bin"
 export POSTGRESQL_INITSCRIPTS_DIR=/docker-entrypoint-initdb.d
-export PATH="$POSTGRESQL_BINDIR:$PATH"
+export PATH="$POSTGRESQL_BIN_DIR:$PATH"
 
 # Users
 export POSTGRESQL_DAEMON_USER="postgresql"
@@ -100,7 +97,7 @@ export POSTGRESQL_CLUSTER_APP_NAME=${POSTGRESQL_CLUSTER_APP_NAME:-walreceiver}
 export POSTGRESQL_DATABASE="${POSTGRESQL_DATABASE:-}"
 export POSTGRESQL_INITDB_ARGS="${POSTGRESQL_INITDB_ARGS:-}"
 export ALLOW_EMPTY_PASSWORD="${ALLOW_EMPTY_PASSWORD:-yes}"
-export POSTGRESQL_INITDB_WALDIR="${POSTGRESQL_INITDB_WALDIR:-}"
+export POSTGRESQL_INITDB_WAL_DIR="${POSTGRESQL_INITDB_WAL_DIR:-}"
 export POSTGRESQL_MASTER_HOST="${POSTGRESQL_MASTER_HOST:-}"
 export POSTGRESQL_MASTER_PORT_NUMBER="${POSTGRESQL_MASTER_PORT_NUMBER:-5432}"
 export POSTGRESQL_NUM_SYNCHRONOUS_REPLICAS="${POSTGRESQL_NUM_SYNCHRONOUS_REPLICAS:-0}"
@@ -215,8 +212,8 @@ postgresql_validate() {
 #########################
 postgresql_create_config() {
     debug "postgresql.conf file not detected. Generating it..."
-    cp "$POSTGRESQL_BASEDIR/share/postgresql.conf.sample" "$POSTGRESQL_CONFFILE"
-    sed -i 's/#include_dir/include_dir/g' "$POSTGRESQL_CONFFILE"
+    cp "$POSTGRESQL_BASE_DIR/share/postgresql.conf.sample" "$POSTGRESQL_CONF_FILE"
+    sed -i 's/#include_dir/include_dir/g' "$POSTGRESQL_CONF_FILE"
 }
 
 ########################
@@ -230,7 +227,7 @@ postgresql_create_config() {
 #########################
 postgresql_create_pghba() {
     debug "pg_hba.conf file not detected. Generating it..."
-    cat << EOF > "$POSTGRESQL_PGHBAFILE"
+    cat << EOF > "$POSTGRESQL_PGHBA_FILE"
 host     all             all             0.0.0.0/0               trust
 host     all             all             ::1/128                 trust
 EOF
@@ -246,7 +243,7 @@ EOF
 #   None
 #########################
 postgresql_allow_local_connection() {
-    cat << EOF >> "$POSTGRESQL_PGHBAFILE"
+    cat << EOF >> "$POSTGRESQL_PGHBA_FILE"
 local    all             all                                     trust
 EOF
 }
@@ -262,7 +259,7 @@ EOF
 #########################
 postgresql_restrict_pghba() {
     if [[ -n "$POSTGRESQL_PASSWORD" ]];then
-        sed -i 's/trust/md5/g' "$POSTGRESQL_PGHBAFILE"
+        sed -i 's/trust/md5/g' "$POSTGRESQL_PGHBA_FILE"
     fi
 }
 
@@ -280,7 +277,7 @@ postgresql_add_replication_to_pghba() {
     if [[ -n "$POSTGRESQL_REPLICATION_PASSWORD" ]];then
         replication_auth="md5"
     fi
-    cat << EOF >> "$POSTGRESQL_PGHBAFILE"
+    cat << EOF >> "$POSTGRESQL_PGHBA_FILE"
 host      replication     all             0.0.0.0/0               ${replication_auth}
 EOF
 }
@@ -292,14 +289,14 @@ EOF
 # Arguments:
 #   $1 - property
 #   $2 - value
-#   $3 - Path to configuration file (default: $POSTGRESQL_CONFFILE)
+#   $3 - Path to configuration file (default: $POSTGRESQL_CONF_FILE)
 # Returns:
 #   None
 #########################
 postgresql_set_property() {
-    local -r property=$1
-    local -r value=$2
-    local -r conf_file=${3:-"$POSTGRESQL_CONFFILE"}
+    local -r property="${1:?missing property}"
+    local -r value="${2:?missing value}"
+    local -r conf_file="${3:-$POSTGRESQL_CONF_FILE}"
     sed -i "s?^#*\s*${property}\s*=.*?${property} = '${value}'?g" "$conf_file"
 }
 
@@ -387,8 +384,6 @@ postgresql_create_custom_database() {
 
 ########################
 # Change postgresql.conf to listen in 0.0.0.0
-# Globals:
-#   POSTGRESQL_*
 # Arguments:
 #   None
 # Returns:
@@ -409,7 +404,7 @@ postgresql_enable_remote_connections() {
 #########################
 postgresql_is_file_external() {
     local -r filename=$1
-    if [[ -d "$POSTGRESQL_MOUNTED_CONFDIR" ]] && [[ -f "$POSTGRESQL_MOUNTED_CONFDIR"/"$filename" ]]; then
+    if [[ -d "$POSTGRESQL_MOUNTED_CONF_DIR" ]] && [[ -f "$POSTGRESQL_MOUNTED_CONF_DIR"/"$filename" ]]; then
         return 0
     else
         return 1
@@ -429,34 +424,34 @@ postgresql_initialize() {
     info "Initializing PostgreSQL database..."
 
     # User injected custom configuration
-    if [[ -d "$POSTGRESQL_MOUNTED_CONFDIR" ]] && compgen -G "$POSTGRESQL_MOUNTED_CONFDIR"/* > /dev/null;then
-        debug "Copying files from $POSTGRESQL_MOUNTED_CONFDIR to $POSTGRESQL_CONFDIR"
-        cp -fr "$POSTGRESQL_MOUNTED_CONFDIR"/* "$POSTGRESQL_CONFDIR"
+    if [[ -d "$POSTGRESQL_MOUNTED_CONF_DIR" ]] && compgen -G "$POSTGRESQL_MOUNTED_CONF_DIR"/* > /dev/null;then
+        debug "Copying files from $POSTGRESQL_MOUNTED_CONF_DIR to $POSTGRESQL_CONF_DIR"
+        cp -fr "$POSTGRESQL_MOUNTED_CONF_DIR"/* "$POSTGRESQL_CONF_DIR"
     fi
     local create_conf_file=yes
     local create_pghba_file=yes
 
     if postgresql_is_file_external "postgresql.conf"; then
-        debug "Custom configuration $POSTGRESQL_CONFFILE detected"
+        debug "Custom configuration $POSTGRESQL_CONF_FILE detected"
         create_conf_file=no
     fi
 
     if postgresql_is_file_external "pg_hba.conf"; then
-        debug "Custom configuration $POSTGRESQL_PGHBAFILE detected"
+        debug "Custom configuration $POSTGRESQL_PGHBA_FILE detected"
         create_pghba_file=no
     fi
 
     debug "Ensuring expected directories/files exist..."
-    for dir in "$POSTGRESQL_TMPDIR" "$POSTGRESQL_LOGDIR"; do
+    for dir in "$POSTGRESQL_TMP_DIR" "$POSTGRESQL_LOG_DIR"; do
         ensure_dir_exists "$dir"
         am_i_root && chown "$DB_DAEMON_USER:$DB_DAEMON_GROUP" "$dir"
     done
     is_boolean_yes "$create_conf_file" && postgresql_create_config
     is_boolean_yes "$create_pghba_file" && postgresql_create_pghba && postgresql_allow_local_connection
 
-    if [[ -e "$POSTGRESQL_DATADIR" ]]; then
+    if [[ -e "$POSTGRESQL_DATA_DIR" ]]; then
         info "Deploying PostgreSQL with persisted data..."
-        local -r postmaster_path="$POSTGRESQL_DATADIR"/postmaster.pid
+        local -r postmaster_path="$POSTGRESQL_DATA_DIR"/postmaster.pid
         if [[ -f "$postmaster_path" ]];then
             info "Cleaning stale postmaster.pid file"
             rm "$postmaster_path"
@@ -465,8 +460,8 @@ postgresql_initialize() {
         is_boolean_yes "$create_conf_file" && postgresql_configure_replication_parameters
         [[ "$POSTGRESQL_REPLICATION_MODE" = "master" ]] && [[ -n "$POSTGRESQL_REPLICATION_USER" ]] && is_boolean_yes "$create_pghba_file" && postgresql_add_replication_to_pghba
     else
-        ensure_dir_exists "$POSTGRESQL_DATADIR"
-        am_i_root && chown "$DB_DAEMON_USER:$DB_DAEMON_GROUP" "$POSTGRESQL_DATADIR"
+        ensure_dir_exists "$POSTGRESQL_DATA_DIR"
+        am_i_root && chown "$DB_DAEMON_USER:$DB_DAEMON_GROUP" "$POSTGRESQL_DATA_DIR"
         if [[ "$POSTGRESQL_REPLICATION_MODE" = "master" ]];then
             postgresql_master_init_db
             postgresql_start_bg
@@ -489,7 +484,7 @@ postgresql_initialize() {
     fi
 
     # Delete conf files generated on first run
-    rm -f "$POSTGRESQL_DATADIR"/postgresql.conf "$POSTGRESQL_DATADIR"/pg_hba.conf
+    rm -f "$POSTGRESQL_DATA_DIR"/postgresql.conf "$POSTGRESQL_DATA_DIR"/pg_hba.conf
 }
 
 ########################
@@ -503,10 +498,10 @@ postgresql_initialize() {
 #########################
 postgresql_custom_init_scripts() {
     info "Loading custom scripts..."   
-    if [[ -n $(find $POSTGRESQL_INITSCRIPTS_DIR/ -type f -regex ".*\.\(sh\|sql\|sql.gz\)") ]] && [[ ! -f "$POSTGRESQL_VOLUMEDIR/.user_scripts_initialized" ]] ; then
+    if [[ -n $(find "$POSTGRESQL_INITSCRIPTS_DIR/" -type f -regex ".*\.\(sh\|sql\|sql.gz\)") ]] && [[ ! -f "$POSTGRESQL_VOLUME_DIR/.user_scripts_initialized" ]] ; then
         info "Loading user's custom files from $POSTGRESQL_INITSCRIPTS_DIR ...";
         postgresql_start_bg
-        find $POSTGRESQL_INITSCRIPTS_DIR/ -type f -regex ".*\.\(sh\|sql\|sql.gz\)" | sort | while read -r f; do
+        find "$POSTGRESQL_INITSCRIPTS_DIR/" -type f -regex ".*\.\(sh\|sql\|sql.gz\)" | sort | while read -r f; do
             case "$f" in
                 *.sh)
                     if [[ -x "$f" ]]; then
@@ -520,7 +515,7 @@ postgresql_custom_init_scripts() {
                 *)        debug "Ignoring $f" ;;
             esac
         done
-        touch "$POSTGRESQL_VOLUMEDIR"/.user_scripts_initialized
+        touch "$POSTGRESQL_VOLUME_DIR"/.user_scripts_initialized
     fi
 }
 
@@ -535,7 +530,7 @@ postgresql_custom_init_scripts() {
 #########################
 postgresql_stop() {
     info "Stopping PostgreSQL..."
-    stop_service_using_pid "$POSTGRESQL_PIDFILE"
+    stop_service_using_pid "$POSTGRESQL_PID_FILE"
 }
 
 ########################
@@ -558,7 +553,7 @@ postgresql_execute() {
     local -r pass="${3:-}"
     local -r host="${4:-localhost}"
     local args=( "-h" "$host" "-U" "$user" )
-    local cmd=("$POSTGRESQL_BINDIR/psql")
+    local cmd=("$POSTGRESQL_BIN_DIR/psql")
     [[ -n "$db" ]] && args+=( "-d" "$db" )
     if [[ "${BITNAMI_DEBUG:-false}" = true ]]; then
         PGPASSWORD=$pass "${cmd[@]}" "${args[@]}"
@@ -577,13 +572,13 @@ postgresql_execute() {
 #   None
 #########################
 postgresql_start_bg() {
-    local -r pg_ctl_flags=("-w" "-D" "$POSTGRESQL_DATADIR" -l "$POSTGRESQL_LOGFILE" "-o" "--config-file=$POSTGRESQL_CONFFILE --external_pid_file=$POSTGRESQL_PIDFILE --hba_file=$POSTGRESQL_PGHBAFILE")
+    local -r pg_ctl_flags=("-w" "-D" "$POSTGRESQL_DATA_DIR" -l "$POSTGRESQL_LOG_FILE" "-o" "--config-file=$POSTGRESQL_CONF_FILE --external_pid_file=$POSTGRESQL_PID_FILE --hba_file=$POSTGRESQL_PGHBA_FILE")
     info "Starting PostgreSQL in background..."
     is_postgresql_running && return
-    "$POSTGRESQL_BINDIR"/pg_ctl "start" "${pg_ctl_flags[@]}"
+    "$POSTGRESQL_BIN_DIR"/pg_ctl "start" "${pg_ctl_flags[@]}"
     local -r pg_isready_args=("-U" "postgres")
     local counter=$POSTGRESQL_INIT_MAX_TIMEOUT
-    while ! "$POSTGRESQL_BINDIR"/pg_isready "${pg_isready_args[@]}";do 
+    while ! "$POSTGRESQL_BIN_DIR"/pg_isready "${pg_isready_args[@]}";do 
         sleep 1
         counter=$((counter - 1 ))
         if (( counter <= 0 ));then
@@ -604,7 +599,7 @@ postgresql_start_bg() {
 #########################
 is_postgresql_running() {
     local pid
-    pid="$(get_pid_from_file "$POSTGRESQL_PIDFILE")"
+    pid="$(get_pid_from_file "$POSTGRESQL_PID_FILE")"
 
     if [[ -z "$pid" ]]; then
         false
@@ -627,16 +622,16 @@ postgresql_master_init_db() {
     if [[ -n "${POSTGRESQL_INITDB_ARGS[*]}" ]];then
         initdb_args+=(${POSTGRESQL_INITDB_ARGS[@]})
     fi
-    if [[ -n "$POSTGRESQL_INITDB_WALDIR" ]];then
-        ensure_dir_exists "$POSTGRESQL_INITDB_WALDIR"
-        am_i_root && chown "$DB_DAEMON_USER:$DB_DAEMON_GROUP" "$POSTGRESQL_INITDB_WALDIR"
-        initdb_args+=("--waldir" "$POSTGRESQL_INITDB_WALDIR")
+    if [[ -n "$POSTGRESQL_INITDB_WAL_DIR" ]];then
+        ensure_dir_exists "$POSTGRESQL_INITDB_WAL_DIR"
+        am_i_root && chown "$DB_DAEMON_USER:$DB_DAEMON_GROUP" "$POSTGRESQL_INITDB_WAL_DIR"
+        initdb_args+=("--waldir" "$POSTGRESQL_INITDB_WAL_DIR")
     fi
     if [[ -n "${initdb_args[*]:-}" ]];then
         info "Initializing PostgreSQL with ${initdb_args[*]} extra initdb arguments"
-        "$POSTGRESQL_BINDIR/initdb" -E UTF8 -D "$POSTGRESQL_DATADIR" -U "postgres" "${initdb_args[@]}"
+        "$POSTGRESQL_BIN_DIR/initdb" -E UTF8 -D "$POSTGRESQL_DATA_DIR" -U "postgres" "${initdb_args[@]}"
     else 
-        "$POSTGRESQL_BINDIR/initdb" -E UTF8 -D "$POSTGRESQL_DATADIR" -U "postgres"
+        "$POSTGRESQL_BIN_DIR/initdb" -E UTF8 -D "$POSTGRESQL_DATA_DIR" -U "postgres"
     fi
 }
 
@@ -652,7 +647,7 @@ postgresql_master_init_db() {
 postgresql_slave_init_db() {
     info "Waiting for replication master to accept connections (${POSTGRESQL_INIT_MAX_TIMEOUT} timeout)..."
     local -r check_args=("-U" "$POSTGRESQL_REPLICATION_USER" "-h" "$POSTGRESQL_MASTER_HOST" "-p" "$POSTGRESQL_MASTER_PORT_NUMBER" "-d" "postgres")
-    local -r check_cmd=("$POSTGRESQL_BINDIR"/pg_isready)
+    local -r check_cmd=("$POSTGRESQL_BIN_DIR"/pg_isready)
     local ready_counter=$POSTGRESQL_INIT_MAX_TIMEOUT
 
     while ! PGPASSWORD=$POSTGRESQL_REPLICATION_PASSWORD "${check_cmd[@]}" "${check_args[@]}";do 
@@ -665,8 +660,8 @@ postgresql_slave_init_db() {
 
     done
     info "Replicating the initial database"
-    local -r backup_args=("-D" "$POSTGRESQL_DATADIR" "-U" "$POSTGRESQL_REPLICATION_USER" "-h" "$POSTGRESQL_MASTER_HOST" "-X" "stream" "-w" "-v" "-P")
-    local -r backup_cmd=("$POSTGRESQL_BINDIR"/pg_basebackup)
+    local -r backup_args=("-D" "$POSTGRESQL_DATA_DIR" "-U" "$POSTGRESQL_REPLICATION_USER" "-h" "$POSTGRESQL_MASTER_HOST" "-X" "stream" "-w" "-v" "-P")
+    local -r backup_cmd=("$POSTGRESQL_BIN_DIR"/pg_basebackup)
     local replication_counter=$POSTGRESQL_INIT_MAX_TIMEOUT
     while ! PGPASSWORD=$POSTGRESQL_REPLICATION_PASSWORD "${backup_cmd[@]}" "${backup_args[@]}";do
         debug "Backup command failed. Sleeping and trying again"
@@ -677,7 +672,7 @@ postgresql_slave_init_db() {
             exit 1
         fi
     done
-    chmod 0700 "$POSTGRESQL_DATADIR"
+    chmod 0700 "$POSTGRESQL_DATA_DIR"
 }
 
 ########################
@@ -691,9 +686,9 @@ postgresql_slave_init_db() {
 #########################
 postgresql_configure_recovery() {
     info "Setting up streaming replication slave..."
-    cp -f "$POSTGRESQL_BASEDIR/share/recovery.conf.sample" "$POSTGRESQL_RECOVERYFILE"
-    chmod 600 "$POSTGRESQL_RECOVERYFILE"
-    postgresql_set_property "standby_mode" "on" "$POSTGRESQL_RECOVERYFILE"
-    postgresql_set_property "primary_conninfo" "host=$POSTGRESQL_MASTER_HOST port=$POSTGRESQL_MASTER_PORT_NUMBER user=$POSTGRESQL_REPLICATION_USER password=$POSTGRESQL_REPLICATION_PASSWORD application_name=$POSTGRESQL_CLUSTER_APP_NAME" "$POSTGRESQL_RECOVERYFILE"
-    postgresql_set_property "trigger_file" "/tmp/postgresql.trigger.$POSTGRESQL_MASTER_PORT_NUMBER" "$POSTGRESQL_RECOVERYFILE"
+    cp -f "$POSTGRESQL_BASE_DIR/share/recovery.conf.sample" "$POSTGRESQL_RECOVERY_FILE"
+    chmod 600 "$POSTGRESQL_RECOVERY_FILE"
+    postgresql_set_property "standby_mode" "on" "$POSTGRESQL_RECOVERY_FILE"
+    postgresql_set_property "primary_conninfo" "host=$POSTGRESQL_MASTER_HOST port=$POSTGRESQL_MASTER_PORT_NUMBER user=$POSTGRESQL_REPLICATION_USER password=$POSTGRESQL_REPLICATION_PASSWORD application_name=$POSTGRESQL_CLUSTER_APP_NAME" "$POSTGRESQL_RECOVERY_FILE"
+    postgresql_set_property "trigger_file" "/tmp/postgresql.trigger.$POSTGRESQL_MASTER_PORT_NUMBER" "$POSTGRESQL_RECOVERY_FILE"
 }

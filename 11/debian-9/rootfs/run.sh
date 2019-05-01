@@ -12,11 +12,12 @@ set -o pipefail
 
 # Load PostgreSQL environment variables
 eval "$(postgresql_env)"
-readonly flags=("-D" "$POSTGRESQL_DATADIR" "--config-file=$POSTGRESQL_CONFFILE" "--external_pid_file=$POSTGRESQL_PIDFILE" "--hba_file=$POSTGRESQL_PGHBAFILE")
+readonly flags=("-D" "$POSTGRESQL_DATA_DIR" "--config-file=$POSTGRESQL_CONF_FILE" "--external_pid_file=$POSTGRESQL_PID_FILE" "--hba_file=$POSTGRESQL_PGHBA_FILE")
+readonly cmd=$(command -v postgres)
 
 info "** Starting PostgreSQL **"
 if am_i_root; then
-    exec gosu "$POSTGRESQL_DAEMON_USER" "${POSTGRESQL_BINDIR}/postgres" "${flags[@]}"
+    exec gosu "$POSTGRESQL_DAEMON_USER" "${cmd}" "${flags[@]}"
 else
-    exec "${POSTGRESQL_BINDIR}/postgres" "${flags[@]}"
+    exec "${cmd}" "${flags[@]}"
 fi
