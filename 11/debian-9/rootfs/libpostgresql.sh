@@ -211,7 +211,7 @@ postgresql_validate() {
 #   None
 #########################
 postgresql_create_config() {
-    debug "postgresql.conf file not detected. Generating it..."
+    info "postgresql.conf file not detected. Generating it..."
     cp "$POSTGRESQL_BASE_DIR/share/postgresql.conf.sample" "$POSTGRESQL_CONF_FILE"
     sed -i 's/#include_dir/include_dir/g' "$POSTGRESQL_CONF_FILE"
 }
@@ -226,7 +226,7 @@ postgresql_create_config() {
 #   None
 #########################
 postgresql_create_pghba() {
-    debug "pg_hba.conf file not detected. Generating it..."
+    info "pg_hba.conf file not detected. Generating it..."
     cat << EOF > "$POSTGRESQL_PGHBA_FILE"
 host     all             all             0.0.0.0/0               trust
 host     all             all             ::1/128                 trust
@@ -432,12 +432,12 @@ postgresql_initialize() {
     local create_pghba_file=yes
 
     if postgresql_is_file_external "postgresql.conf"; then
-        debug "Custom configuration $POSTGRESQL_CONF_FILE detected"
+        info "Custom configuration $POSTGRESQL_CONF_FILE detected"
         create_conf_file=no
     fi
 
     if postgresql_is_file_external "pg_hba.conf"; then
-        debug "Custom configuration $POSTGRESQL_PGHBA_FILE detected"
+        info "Custom configuration $POSTGRESQL_PGHBA_FILE detected"
         create_pghba_file=no
     fi
 

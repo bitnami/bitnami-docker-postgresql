@@ -36,4 +36,5 @@ postgresql_custom_init_scripts
 if ! postgresql_is_file_external "postgresql.conf"; then
     info "Enabling remote connections"
     postgresql_enable_remote_connections
+    postgresql_set_property "port" "$POSTGRESQL_PORT_NUMBER"
 fi
