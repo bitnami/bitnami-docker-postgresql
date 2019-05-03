@@ -1,4 +1,4 @@
-FROM bitnami/oraclelinux-extras-base:7-r267
+FROM bitnami/oraclelinux-extras:7-r323
 LABEL maintainer "Bitnami <containers@bitnami.com>"
 
 ENV BITNAMI_PKG_CHMOD="-R g+rwX" \
@@ -15,7 +15,7 @@ COPY rootfs /
 RUN /post-unpack.sh
 
 ENV BITNAMI_APP_NAME="postgresql" \
-    BITNAMI_IMAGE_VERSION="11.2.0-debian-9-r63" \
+    BITNAMI_IMAGE_VERSION="11.2.0-ol-7-r63" \
     LANG="en_US.UTF-8" \
     LANGUAGE="en_US:en" \
     PATH="/opt/bitnami/postgresql/bin:$PATH" \
