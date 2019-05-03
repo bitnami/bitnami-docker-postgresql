@@ -22,6 +22,7 @@ services:
       - postgresql-master
     environment:
       - POSTGRESQL_REPLICATION_MODE=slave
+      - POSTGRESQL_PASSWORD=my_password
       - POSTGRESQL_REPLICATION_USER=repl_user
       - POSTGRESQL_REPLICATION_PASSWORD=repl_password
       - POSTGRESQL_MASTER_HOST=postgresql-master
