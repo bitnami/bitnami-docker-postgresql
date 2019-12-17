@@ -718,7 +718,7 @@ postgresql_custom_pre_init_scripts() {
 #########################
 postgresql_custom_init_scripts() {
     postgresql_info "Loading custom scripts..."
-    if [[ -n $(find "$POSTGRESQL_INITSCRIPTS_DIR/" -type f -regex ".*\.\(sh\|sql\|sql.gz\)") ]] && [[ ! -f "$POSTGRESQL_VOLUME_DIR/.user_scripts_initialized" ]] ; then
+    if [[ -n $(find "$POSTGRESQL_INITSCRIPTS_DIR/" -type f -regex ".*\.\(sh\|sql\|sql.gz\)") ]] && [[ ! -f "$POSTGRESQL_VOLUME_DIR/.user_scripts_initialized" ]] && [[ "$POSTGRESQL_REPLICATION_MODE" = "master" ]] ; then
         postgresql_info "Loading user's custom files from $POSTGRESQL_INITSCRIPTS_DIR ...";
         postgresql_start_bg
         find "$POSTGRESQL_INITSCRIPTS_DIR/" -type f -regex ".*\.\(sh\|sql\|sql.gz\)" | sort | while read -r f; do
