@@ -670,14 +670,6 @@ postgresql_initialize() {
             postgresql_master_init_db
             postgresql_start_bg
             [[ -n "${POSTGRESQL_DATABASE}" ]] && [[ "$POSTGRESQL_DATABASE" != "postgres" ]] && postgresql_create_custom_database
-            if [[ "$POSTGRESQL_USERNAME" = "postgres" ]]; then
-                postgresql_alter_postgres_user "$POSTGRESQL_PASSWORD"
-            else
-                if [[ -n "$POSTGRESQL_POSTGRES_PASSWORD" ]]; then
-                    postgresql_alter_postgres_user "$POSTGRESQL_POSTGRES_PASSWORD"
-                fi
-                postgresql_create_admin_user
-            fi
             is_boolean_yes "$create_pghba_file" && postgresql_restrict_pghba
             [[ -n "$POSTGRESQL_REPLICATION_USER" ]] && postgresql_create_replication_user
             is_boolean_yes "$create_conf_file" && postgresql_configure_replication_parameters
@@ -690,6 +682,14 @@ postgresql_initialize() {
             is_boolean_yes "$create_conf_file" && postgresql_configure_fsync
             postgresql_configure_recovery
         fi
+    fi
+    if [[ "$POSTGRESQL_USERNAME" = "postgres" ]]; then
+        postgresql_alter_postgres_user "$POSTGRESQL_PASSWORD"
+    else
+        if [[ -n "$POSTGRESQL_POSTGRES_PASSWORD" ]]; then
+            postgresql_alter_postgres_user "$POSTGRESQL_POSTGRES_PASSWORD"
+        fi
+        postgresql_create_admin_user
     fi
 
     # Delete conf files generated on first run
