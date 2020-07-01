@@ -446,6 +446,16 @@ The LDAP related parameters are:
 
 For more information refer to [Postgresql LDAP auth configuration documentation](https://www.postgresql.org/docs/12/auth-ldap.html).
 
+## TLS/SSL configuration
+
+TLS/SSL support can be enabled with those parameters:
+
+* `POSTGRESQL_SSL_KEY_FILE`: private key file path.
+* `POSTGRESQL_SSL_CERT_FILE`: certificate file path (with intermediate certificate if needed).
+* `POSTGRESQL_SSL`: Enable TLS/SSL support. Set to `on` by default if key and certs are provided.
+* `POSTGRESQL_SSL_ENFORCE`: Enforce TLS/SSL on all pghba entries by setting `yes`, this will disable plaintext access.
+* `POSTGRESQL_REPLICATION_SSLMODE`: Use this variable to enforce TLS/SSL for replication. Set to `prefer` by default. See [SSL Mode Descriptions](https://www.postgresql.org/docs/current/libpq-ssl.html#LIBPQ-SSL-SSLMODE-STATEMENTS).
+
 ## Configuration file
 
 The image looks for `postgresql.conf` file in `/opt/bitnami/postgresql/conf/`. You can mount a volume at `/bitnami/postgresql/conf/` and copy/edit the `postgresql.conf` file in the `/path/to/postgresql-persistence/conf/`. The default configurations will be populated to the `conf/` directory if it's empty.

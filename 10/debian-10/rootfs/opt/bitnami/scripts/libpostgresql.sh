@@ -519,6 +519,9 @@ postgresql_initialize() {
         fi
     fi
 
+    [[ -f "${POSTGRESQL_SSL_KEY_FILE}" && -f "${POSTGRESQL_SSL_CERT_FILE}" ]] && postgresql_configure_ssl
+    [[ "$POSTGRESQL_SSL_ENFORCE" = "yes" ]] && postgresql_enforce_ssl
+
     # Delete conf files generated on first run
     rm -f "$POSTGRESQL_DATA_DIR"/postgresql.conf "$POSTGRESQL_DATA_DIR"/pg_hba.conf
 }
@@ -811,14 +814,44 @@ postgresql_configure_recovery() {
     info "Setting up streaming replication slave..."
     local -r psql_major_version="$(postgresql_get_major_version)"
     if (( psql_major_version >= 12 )); then
-        postgresql_set_property "primary_conninfo" "host=${POSTGRESQL_MASTER_HOST} port=${POSTGRESQL_MASTER_PORT_NUMBER} user=${POSTGRESQL_REPLICATION_USER} password=${POSTGRESQL_REPLICATION_PASSWORD} application_name=${POSTGRESQL_CLUSTER_APP_NAME}" "$POSTGRESQL_CONF_FILE"
+        postgresql_set_property "primary_conninfo" "host=${POSTGRESQL_MASTER_HOST} port=${POSTGRESQL_MASTER_PORT_NUMBER} sslmode=${POSTGRESQL_REPLICATION_SSLMODE:-prefer} user=${POSTGRESQL_REPLICATION_USER} password=${POSTGRESQL_REPLICATION_PASSWORD} application_name=${POSTGRESQL_CLUSTER_APP_NAME}" "$POSTGRESQL_CONF_FILE"
         postgresql_set_property "promote_trigger_file" "/tmp/postgresql.trigger.${POSTGRESQL_MASTER_PORT_NUMBER}" "$POSTGRESQL_CONF_FILE"
         touch "$POSTGRESQL_DATA_DIR"/standby.signal
     else
         cp -f "$POSTGRESQL_BASE_DIR/share/recovery.conf.sample" "$POSTGRESQL_RECOVERY_FILE"
         chmod 600 "$POSTGRESQL_RECOVERY_FILE"
         postgresql_set_property "standby_mode" "on" "$POSTGRESQL_RECOVERY_FILE"
-        postgresql_set_property "primary_conninfo" "host=${POSTGRESQL_MASTER_HOST} port=${POSTGRESQL_MASTER_PORT_NUMBER} user=${POSTGRESQL_REPLICATION_USER} password=${POSTGRESQL_REPLICATION_PASSWORD} application_name=${POSTGRESQL_CLUSTER_APP_NAME}" "$POSTGRESQL_RECOVERY_FILE"
+        postgresql_set_property "primary_conninfo" "host=${POSTGRESQL_MASTER_HOST} port=${POSTGRESQL_MASTER_PORT_NUMBER} sslmode=${POSTGRESQL_REPLICATION_SSLMODE:-prefer} user=${POSTGRESQL_REPLICATION_USER} password=${POSTGRESQL_REPLICATION_PASSWORD} application_name=${POSTGRESQL_CLUSTER_APP_NAME}" "$POSTGRESQL_RECOVERY_FILE"
         postgresql_set_property "trigger_file" "/tmp/postgresql.trigger.${POSTGRESQL_MASTER_PORT_NUMBER}" "$POSTGRESQL_RECOVERY_FILE"
     fi
+}
+
+########################
+# Configure ssl parameters
+# Globals:
+#   POSTGRESQL_*
+# Arguments:
+#   None
+# Returns:
+#   Boolean
+#########################
+postgresql_configure_ssl() {
+    postgresql_info "Setting up SSL config..."
+    postgresql_set_property "ssl" "${POSTGRESQL_SSL:-on}"
+    postgresql_set_property "ssl_key_file" "$POSTGRESQL_SSL_KEY_FILE"
+    postgresql_set_property "ssl_cert_file" "$POSTGRESQL_SSL_CERT_FILE"
+}
+
+########################
+# Enforce SSL in pghba
+# Globals:
+#   POSTGRESQL_*
+# Arguments:
+#   None
+# Returns:
+#   None
+#########################
+postgresql_enforce_ssl() {
+    postgresql_info "Enforcing SSL on network listening sockets..."
+    replace_in_file "$POSTGRESQL_PGHBA_FILE" "^host" "hostssl" false
 }
